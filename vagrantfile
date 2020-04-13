@@ -32,11 +32,24 @@ Vagrant.configure("2") do |config|
             cp ~vagrant/.ssh/auth* ~root/.ssh
 
             for pkg in epel-release pam_script; do yum install -y $pkg; done	    
-            useradd  -g vagrant -p 123 test_user
-            sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-            sed -i "2i auth  required  pam_script.so /vagrant/scripts/pam_date_check.sh"  /etc/pam.d/sshd
+            #useradd  -g vagrant -p 123 test_user
+
+useradd test_user
+groupadd admin
+usermod -a -G admin test_user
+echo "test_user:123456" | chpasswd
+
+sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+
+sed -i '2i auth  required  pam_script.so /vagrant/scripts/pam_date_check.sh'  /etc/pam.d/sshd
+sed -i '8i account required pam_access.so' /etc/pam.d/sshd
+sed -i '9i account required pam_time.so' /etc/pam.d/sshd
+
+sed -i '5i account required pam_access.so' /etc/pam.d/login
+sed -i '6i account required pam_time.so' /etc/pam.d/login
+
             # cp /vagrant/scripts/pam_date_check.sh /etc/pam_script/
-	    # systemctl restart sshd
+	    systemctl restart sshd
   	  SHELL
 
       end
