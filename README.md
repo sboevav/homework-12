@@ -226,7 +226,7 @@
 
 ###  Сменить владельца  /opt/uploads  на user3 и добавить sticky bit
 
-1. Проверим права доступа к каталогу /opt/upload, затем изменим владельца на user3 и установим на каталог Sticky bit, означающий, что удалить файл из этого каталога может только владелец файла или владелец каталога или суперпользователь. Посмотрим на все сделанные изменения командой ```ls -l /opt``` - видим, что владельцем каталога стал пользователь user3 и установлен Sticky bit - T.  
+1. Проверим права доступа к каталогу /opt/upload, затем изменим владельца на user3 и установим на каталог sticky bit, означающий, что удалить файл из этого каталога может только владелец файла или владелец каталога или суперпользователь. Посмотрим на все сделанные изменения командой ```ls -l /opt``` - видим, что владельцем каталога стал пользователь user3 и установлен sticky bit - T.  
 	```bash
 	[root@otuslinux vagrant]# ls -l /opt
 	total 0
@@ -281,11 +281,65 @@
 	-rw-rw-r--. 1 user3 admins 0 Apr 19 12:06 user3_file2
 	```
 
+### Записи в sudoers
 
-```bash
-```
-```bash
-```
+1. Попробуем из под user3 выполнить ```sudo ls -l /root```. Выполнение не получилось-требует пароль  
+	```bash
+	[user3@otuslinux ~]$ sudo ls -l /root
+
+	We trust you have received the usual lecture from the local System
+	Administrator. It usually boils down to these three things:
+
+	    #1) Respect the privacy of others.
+	    #2) Think before you type.
+	    #3) With great power comes great responsibility.
+
+	[sudo] password for user3: 
+	```
+2. Создадим файл /etc/sudoers.d/user3, в котором пропишем ```user3	ALL=NOPASSWD:/bin/ls```, означающее, что пользователям группы user3 везде разрешено выполнение команды /bin/ls без ввода пароля  
+	```bash
+	[root@otuslinux vagrant]# vi /etc/sudoers.d/user3
+	[root@otuslinux vagrant]# cat /etc/sudoers.d/user3
+	user3	ALL=NOPASSWD:/bin/ls
+	```
+3. Снова попробуем из под user3 выполнить ```sudo ls -l /root```. Выполнено успешно без запроса пароля  
+	```bash
+	[user3@otuslinux ~]$ sudo ls -l /root
+	total 16
+	-rw-------. 1 root root 5570 Jun  1  2019 anaconda-ks.cfg
+	-rw-------. 1 root root 5300 Jun  1  2019 original-ks.cfg
+	```
+4. Добавим запись в /etc/sudoers.d/admins разрешающий пользователям группы admins любые команды под sudo только с вводом пароля  
+	```bash
+	[root@otuslinux vagrant]# vi /etc/sudoers.d/admins
+	[root@otuslinux vagrant]# cat /etc/sudoers.d/admins
+	admins	ALL = PASSWD: ALL
+	```
+5. Теперь попробуем из под user1, находящегося в группе admins, вывести содержимое каталога /opt/upload/   
+	```bash
+	[root@otuslinux vagrant]# su - user1
+	Last login: Sun Apr 19 14:27:16 UTC 2020 on pts/0
+	[user1@otuslinux ~]$ ls -l /opt/upload/
+	total 0
+	-rw-r--r--. 1 user1 admins 0 Apr 16 17:56 file1
+	-rw-rw-r--. 1 user2 user2  0 Apr 16 17:57 file2
+	-rw-r--r--. 1 user2 admins 0 Apr 16 18:10 file3
+	-rw-rw-r--. 1 user3 user3  0 Apr 19 09:17 user3_file
+	-rw-rw-r--. 1 user3 admins 0 Apr 19 12:06 user3_file2
+	```
+6. Предыдущая операция успешно выполнена, но если эту же операцию выполнить под sudo, то мы увидим запрос пароля, т.к. установили правило запроса пароля под sudo на все команды от пользователей группы admins.  
+	```bash
+	[user1@otuslinux ~]$ sudo ls -l /opt/upload/
+
+	We trust you have received the usual lecture from the local System
+	Administrator. It usually boils down to these three things:
+
+	    #1) Respect the privacy of others.
+	    #2) Think before you type.
+	    #3) With great power comes great responsibility.
+
+	[sudo] password for user1: 
+	```
 
 
 
