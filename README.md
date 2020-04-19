@@ -160,7 +160,7 @@
 
 ### Установить GUID флаг на директорию /opt/uploads
 
-1. Перед внесением изменений проверим текущие права /opt/upload
+1. Перед внесением изменений проверим текущие права /opt/upload  
 	```bash
 	[root@otuslinux vagrant]# ls -l /opt/
 	total 0
@@ -173,7 +173,7 @@
 	total 0
 	drwxrws---+ 2 root admins 63 Apr 19 09:17 upload
 	```
-3. Теперь снова зайдем под пользователем user3 и попробуем создать файл user3_file2
+3. Теперь снова зайдем под пользователем user3 и попробуем создать файл user3_file2  
 	```bash
 	[root@otuslinux vagrant]# su - user3
 	Last login: Sun Apr 19 09:14:03 UTC 2020 on pts/0
@@ -181,7 +181,7 @@
 	[user3@otuslinux ~]$ ls -l /opt/upload/user3_file2
 	-rw-rw-r--. 1 user3 admins 0 Apr 19 12:06 /opt/upload/user3_file2
 	```
-4. Сравним права на последние созданные файлы: user3_file и user3_file2. Видим, что последний файл user3_file2 создан от группы admins. На изменение группы при создании файла повлиял установленный SGID на каталог /opt/upload. После этого все создаваемые файлы в данном каталоге будут наследовать GID директории. А из следующей команды ```ls -l /opt/``` мы видим, что на каталог /opt/upload установлен GID admins.
+4. Сравним права на последние созданные файлы: user3_file и user3_file2. Видим, что последний файл user3_file2 создан от группы admins. На изменение группы при создании файла повлиял установленный SGID на каталог /opt/upload. После этого все создаваемые файлы в данном каталоге будут наследовать GID директории. А из следующей команды ```ls -l /opt/``` мы видим, что на каталог /opt/upload установлен GID admins.  
 	```bash
 	[user3@otuslinux ~]$ ls -l /opt/upload/
 	total 0
@@ -197,12 +197,12 @@
 
 ### Установить  SUID  флаг на выполняемый файл
 
-1. Пытаемся вывести файл shadow под пользователем user3
+1. Пытаемся вывести файл shadow под пользователем user3  
 	```bash
 	[user3@otuslinux ~]$ cat /etc/shadow
 	cat: /etc/shadow: Permission denied
 	```
-2. Теперь установим suid на /bin/cat (Примечание - _текущие версии Linux игнорируют выставление SUID на shell скрипт (проверка на shebang)_)
+2. Теперь установим suid на /bin/cat (Примечание - _текущие версии Linux игнорируют выставление SUID на shell скрипт (проверка на shebang)_)  
 	```bash
 	[root@otuslinux vagrant]# ls -l /bin/cat
 	-rwxr-xr-x. 1 root root 54160 Oct 30  2018 /bin/cat
@@ -210,7 +210,7 @@
 	[root@otuslinux vagrant]# ls -l /bin/cat
 	-rwsr-xr-x. 1 root root 54160 Oct 30  2018 /bin/cat
 	```
-3. Теперь снова попытаемся вывести файл shadow под пользователем user3. Видим, что теперь исполняемый файл /bin/cat получил доступ к файлу /etc/shadow. Это связано с тем, что с установленным suid файл /bin/cat будет исполнятся с UID/GID владельца файла, а в пункте 2 видно, что владельцем файла является root.
+3. Теперь снова попытаемся вывести файл shadow под пользователем user3. Видим, что теперь исполняемый файл /bin/cat получил доступ к файлу /etc/shadow. Это связано с тем, что с установленным suid файл /bin/cat будет исполнятся с UID/GID владельца файла, а в пункте 2 видно, что владельцем файла является root.  
 	```bash
 	[root@otuslinux vagrant]# su - user3
 	Last login: Sun Apr 19 12:05:51 UTC 2020 on pts/0
@@ -226,14 +226,62 @@
 
 ###  Сменить владельца  /opt/uploads  на user3 и добавить sticky bit
 
-```bash
-```
-```bash
-```
-```bash
-```
-```bash
-```
+1. Проверим права доступа к каталогу /opt/upload, затем изменим владельца на user3 и установим на каталог Sticky bit, означающий, что удалить файл из этого каталога может только владелец файла или владелец каталога или суперпользователь. Посмотрим на все сделанные изменения командой ```ls -l /opt``` - видим, что владельцем каталога стал пользователь user3 и установлен Sticky bit - T.  
+	```bash
+	[root@otuslinux vagrant]# ls -l /opt
+	total 0
+	drwxrws---+ 2 root admins 82 Apr 19 12:06 upload
+	[root@otuslinux vagrant]# chown user3 /opt/upload
+	[root@otuslinux vagrant]# chmod +t /opt/upload
+	[root@otuslinux vagrant]# ls -l /opt
+	total 0
+	drwxrws--T+ 2 user3 admins 82 Apr 19 12:06 upload
+	```
+2. Создадим файл user1_file_test под пользователем user1 и выведем информацию о правах доступа  
+	```bash
+	[root@otuslinux vagrant]# su - user1
+	Last login: Thu Apr 16 17:56:03 UTC 2020 on pts/0
+	[user1@otuslinux ~]$ touch /opt/upload/user1_file_test
+	[user1@otuslinux ~]$ ls -l /opt/upload/user1_file_test
+	-rw-r--r--. 1 user1 admins 0 Apr 19 14:13 /opt/upload/user1_file_test
+	```
+3. Зайдем пользователем user3 и попытаемся удалить файл user1_file_test, созданный пользователем user1. Удаление прошло успешно, т.к. пользователь user3 у нас стал владельцем каталога /opt/upload (п.1), а установленный на каталог Sticky bit, позволяет удалить файл из этого каталога владелецу файла, владелецу каталога или суперпользователю.  
+	```bash
+	[root@otuslinux vagrant]# su - user3
+	Last login: Sun Apr 19 14:17:45 UTC 2020 on pts/0
+	[user3@otuslinux ~]$ rm -f  /opt/upload/user1_file_test
+	[user3@otuslinux ~]$ ls -l /opt/upload/
+	total 0
+	-rw-r--r--. 1 user1 admins 0 Apr 16 17:56 file1
+	-rw-rw-r--. 1 user2 user2  0 Apr 16 17:57 file2
+	-rw-r--r--. 1 user2 admins 0 Apr 16 18:10 file3
+	-rw-rw-r--. 1 user3 user3  0 Apr 19 09:17 user3_file
+	-rw-rw-r--. 1 user3 admins 0 Apr 19 12:06 user3_file2
+	```
+4. Теперь снова зайдем пользователем user1, создадим файл user1_file_test и попытаемся удалить файл этим же пользователем user1. В результате выполнения всех операций видим, что все прошло успешно.  
+	```bash
+	[root@otuslinux vagrant]# su - user1
+	Last login: Sun Apr 19 14:13:20 UTC 2020 on pts/0
+	[user1@otuslinux ~]$ touch /opt/upload/user1_file_test
+	[user1@otuslinux ~]$ ls -l /opt/upload/
+	total 0
+	-rw-r--r--. 1 user1 admins 0 Apr 16 17:56 file1
+	-rw-rw-r--. 1 user2 user2  0 Apr 16 17:57 file2
+	-rw-r--r--. 1 user2 admins 0 Apr 16 18:10 file3
+	-rw-r--r--. 1 user1 admins 0 Apr 19 14:27 user1_file_test
+	-rw-rw-r--. 1 user3 user3  0 Apr 19 09:17 user3_file
+	-rw-rw-r--. 1 user3 admins 0 Apr 19 12:06 user3_file2
+	[user1@otuslinux ~]$ rm -f  /opt/upload/user1_file_test
+	[user1@otuslinux ~]$ ls -l /opt/upload/
+	total 0
+	-rw-r--r--. 1 user1 admins 0 Apr 16 17:56 file1
+	-rw-rw-r--. 1 user2 user2  0 Apr 16 17:57 file2
+	-rw-r--r--. 1 user2 admins 0 Apr 16 18:10 file3
+	-rw-rw-r--. 1 user3 user3  0 Apr 19 09:17 user3_file
+	-rw-rw-r--. 1 user3 admins 0 Apr 19 12:06 user3_file2
+	```
+
+
 ```bash
 ```
 ```bash
