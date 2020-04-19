@@ -24,7 +24,7 @@
 	```
 3. Опция -m сразу создает для пользователя домашнюю директорию, а опцией -s указываем, какая оболочка будет загружена для пользователя при входе.  
 
-## Создаем группу и добавляем туда пользователей
+### Создаем группу и добавляем туда пользователей
 
 1. Создаем группу admins и добавляем пользователей user1 и user2.  
 	```bash
@@ -48,7 +48,7 @@
 	uid=1002(user1) gid=1005(admins) groups=1005(admins)
 	```
 
-## Создать каталог от рута и дать права группе admins туда писать
+### Создать каталог от рута и дать права группе admins туда писать
 
 1. Создаем каталог и посмотрим созданные для него права по умолчанию.  
 	```bash
@@ -109,7 +109,7 @@
 	-rw-r--r--. 1 user2 admins 0 Apr 16 18:10 file3
 	```
 
-## Создать пользователя user3 и дать ему права писать в /opt/uploads
+### Создать пользователя user3 и дать ему права писать в /opt/uploads
 
 1. Создадим пользователя user3, посмотрим инфо о нем  
 	```bash
@@ -149,7 +149,7 @@
 	mask::rwx
 	other::---
 	```
-5. Теперь снова зайдем под пользователем user3 и попробуем создать файл  
+5. Теперь снова зайдем под пользователем user3 и попробуем создать файл user3_file.  
 	```bash
 	[root@otuslinux vagrant]# su - user3
 	Last login: Sun Apr 19 08:51:37 UTC 2020 on pts/0
@@ -158,16 +158,84 @@
 	-rw-rw-r--. 1 user3 user3 0 Apr 19 09:17 /opt/upload/user3_file
 	```
 
-. 
+### Установить GUID флаг на директорию /opt/uploads
+
+1. Перед внесением изменений проверим текущие права /opt/upload
+	```bash
+	[root@otuslinux vagrant]# ls -l /opt/
+	total 0
+	drwxrwx---+ 2 root admins 63 Apr 19 09:17 upload
+	```
+2. Установим SGID на каталог /opt/upload. (Примечание - _текущие версии Linux игнорируют установку SUID на диреторию, также игнорируется выставление SUID на shell скрипт_)  
+	```bash
+	[root@otuslinux vagrant]# chmod g+s /opt/upload
+	[root@otuslinux vagrant]# ls -l /opt/
+	total 0
+	drwxrws---+ 2 root admins 63 Apr 19 09:17 upload
+	```
+3. Теперь снова зайдем под пользователем user3 и попробуем создать файл user3_file2
+	```bash
+	[root@otuslinux vagrant]# su - user3
+	Last login: Sun Apr 19 09:14:03 UTC 2020 on pts/0
+	[user3@otuslinux ~]$ touch /opt/upload/user3_file2
+	[user3@otuslinux ~]$ ls -l /opt/upload/user3_file2
+	-rw-rw-r--. 1 user3 admins 0 Apr 19 12:06 /opt/upload/user3_file2
+	```
+4. Сравним права на последние созданные файлы: user3_file и user3_file2. Видим, что последний файл user3_file2 создан от группы admins. На изменение группы при создании файла повлиял установленный SGID на каталог /opt/upload. После этого все создаваемые файлы в данном каталоге будут наследовать GID директории. А из следующей команды ls -l /opt/ мы видим, что на каталог /opt/upload установлен GID admins.
+	```bash
+	[user3@otuslinux ~]$ ls -l /opt/upload/
+	total 0
+	-rw-r--r--. 1 user1 admins 0 Apr 16 17:56 file1
+	-rw-rw-r--. 1 user2 user2  0 Apr 16 17:57 file2
+	-rw-r--r--. 1 user2 admins 0 Apr 16 18:10 file3
+	-rw-rw-r--. 1 user3 user3  0 Apr 19 09:17 user3_file
+	-rw-rw-r--. 1 user3 admins 0 Apr 19 12:06 user3_file2
+	[user3@otuslinux ~]$ ls -l /opt/
+	total 0
+	drwxrws---+ 2 root admins 82 Apr 19 12:06 upload
+	```
+
+### Установить  SUID  флаг на выполняемый файл
+
+1. Пытаемся вывести файл shadow под пользователем user3
+	```bash
+	[user3@otuslinux ~]$ cat /etc/shadow
+	cat: /etc/shadow: Permission denied
+	```
+2. Теперь установим suid на /bin/cat (Примечание - _текущие версии Linux игнорируют выставление SUID на shell скрипт (проверка на shebang)_)
+	```bash
+	[root@otuslinux vagrant]# ls -l /bin/cat
+	-rwxr-xr-x. 1 root root 54160 Oct 30  2018 /bin/cat
+	[root@otuslinux vagrant]# chmod u+s /bin/cat
+	[root@otuslinux vagrant]# ls -l /bin/cat
+	-rwsr-xr-x. 1 root root 54160 Oct 30  2018 /bin/cat
+	```
+3. Теперь снова попытаемся вывести файл shadow под пользователем user3. Видим, что теперь исполняемый файл /bin/cat получил доступ к файлу /etc/shadow. Это связано с тем, что с установленным suid файл /bin/cat будет исполнятся с UID/GID владельца файла, а в пункте 2 видно, что владельцем файла является root.
+	```bash
+	[root@otuslinux vagrant]# su - user3
+	Last login: Sun Apr 19 12:05:51 UTC 2020 on pts/0
+	[user3@otuslinux ~]$ cat /etc/shadow
+	root:$1$QDyPlph/$oaAX/xNRf3aiW3l27NIUA/::0:99999:7:::
+	...
+	vagrant:$1$C93uBBDg$pqzqtS3a9llsERlv..YKs1::0:99999:7:::
+	test_user:$1$l0NXv/Qs$MaqMaxYxojfeS7C26stOj.:18368:0:99999:7:::
+	user1:!!:18368:0:99999:7:::
+	user2:!!:18368:0:99999:7:::
+	user3:!!:18371:0:99999:7:::
+	```
+
+###  Сменить владельца  /opt/uploads  на user3 и добавить sticky bit
+
 ```bash
 ```
-. 
 ```bash
 ```
-. 
 ```bash
 ```
-. 
+```bash
+```
+```bash
+```
 ```bash
 ```
 
