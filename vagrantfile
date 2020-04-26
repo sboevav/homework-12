@@ -28,33 +28,38 @@ Vagrant.configure("2") do |config|
           end
 
       box.vm.provision "shell", inline: <<-SHELL
-	    mkdir -p ~root/.ssh
-            cp ~vagrant/.ssh/auth* ~root/.ssh
+	mkdir -p ~root/.ssh
+        cp ~vagrant/.ssh/auth* ~root/.ssh
 
-            for pkg in epel-release pam_script; do yum install -y $pkg; done	    
+        for pkg in epel-release pam_script; do yum install -y $pkg; done	    
 
-useradd test_user
-groupadd admin
-usermod -a -G admin test_user
-echo "test_user:123456" | chpasswd
+	# Добавление пользователя test_user размещение его в группу admins
+	useradd test_user
+	groupadd admin
+	usermod -a -G admin test_user
+	echo "test_user:123456" | chpasswd
 
-useradd test_user2
-echo "test_user2:123456" | chpasswd
+	# Добавление пользователя test_user2, имеющего обычные права
+	useradd test_user2
+	echo "test_user2:123456" | chpasswd
 
-sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+	# Изменение файлов конфигураций
+	sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+	sed -i '2i auth  required  pam_script.so'  /etc/pam.d/sshd
 
-sed -i '2i auth  required  pam_script.so /vagrant/scripts/pam_date_check.sh'  /etc/pam.d/sshd
-#sed -i '8i account required pam_access.so' /etc/pam.d/sshd
-#sed -i '9i account required pam_time.so' /etc/pam.d/sshd
+	cp /vagrant/scripts/pam_date_check.sh /etc/pam_script
 
-sed -i '5i account required pam_access.so' /etc/pam.d/login
-sed -i '6i account required pam_time.so' /etc/pam.d/login
+	# Установка докера
+	yum check-update
+	curl -fsSL https://get.docker.com/ | sh
+	
+	# Назначение test_user повышенных прав - для команд с докером и возможности рестарта сервиса
+	usermod -aG docker test_user
+	usermod -aG wheel test_user
 
-cp /vagrant/scripts/pam_date_check.sh /etc/pam_script
+	systemctl restart sshd
 
-systemctl restart sshd
-
-  	  SHELL
+  	SHELL
 
       end
   end
