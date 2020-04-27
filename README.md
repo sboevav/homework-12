@@ -393,5 +393,177 @@
 	```bash
 	usermod -aG wheel test_user
 	```
-4. В итоге наш конечный vagrantfile выглядит следующим образом:
+4. В итоге наш конечный vagrantfile выглядит следующим образом:  
+	```bash
+	user@linux1:~/linux/homework-12$ cat vagrantfile
+	# -*- mode: ruby -*-
+	# vim: set ft=ruby :
+
+	MACHINES = {
+	  :otuslinux => {
+		:box_name => "centos/7",
+		:ip_addr => '192.168.11.101',
+	  },
+	}
+
+	Vagrant.configure("2") do |config|
+
+	 # config.vm.provision "shell", path: "install.sh"
+
+	  MACHINES.each do |boxname, boxconfig|
+
+	      config.vm.define boxname do |box|
+
+		  box.vm.box = boxconfig[:box_name]
+		  box.vm.host_name = boxname.to_s
+
+		  #box.vm.network "forwarded_port", guest: 80, host: 80
+
+		  box.vm.network "private_network", ip: boxconfig[:ip_addr]
+
+		  box.vm.provider :virtualbox do |vb|
+		    	  vb.customize ["modifyvm", :id, "--memory", "256"]
+		  end
+
+	      box.vm.provision "shell", inline: <<-SHELL
+		mkdir -p ~root/.ssh
+		cp ~vagrant/.ssh/auth* ~root/.ssh
+
+		for pkg in epel-release pam_script; do yum install -y $pkg; done	    
+
+		# Добавление пользователя test_user размещение его в группу admins
+		useradd test_user
+		groupadd admin
+		usermod -a -G admin test_user
+		echo "test_user:123456" | chpasswd
+
+		# Добавление пользователя test_user2, имеющего обычные права
+		useradd test_user2
+		echo "test_user2:123456" | chpasswd
+
+		# Изменение файлов конфигураций
+		sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+		sed -i '2i auth  required  pam_script.so'  /etc/pam.d/sshd
+
+		cp /vagrant/scripts/pam_date_check.sh /etc/pam_script
+
+		# Установка докера
+		yum check-update
+		curl -fsSL https://get.docker.com/ | sh
+		
+		# Назначение test_user повышенных прав - для команд с докером и возможности рестарта сервиса
+		usermod -aG docker test_user
+		usermod -aG wheel test_user
+
+		systemctl restart sshd
+
+	  	SHELL
+
+	      end
+	  end
+	end
+	```
+
+### Проверка задания
+
+1. Поднимаем виртуалку и подключаемся.  
+	```bash
+	user@linux1:~/linux/homework-12$ vagrant ssh
+	[vagrant@otuslinux ~]$
+	```bash
+2. Проверим созданных пользователей и их группы:  
+	```bash
+	[vagrant@otuslinux ~]$ id test_user
+	uid=1001(test_user) gid=1001(test_user) groups=1001(test_user),10(wheel),1002(admin),993(docker)
+	[vagrant@otuslinux ~]$ id test_user2
+	uid=1002(test_user2) gid=1003(test_user2) groups=1003(test_user2)
+	```
+3. Проверим дату и убедимся, что в понедельник оба пользователя заходят в систему нормально:   
+	```bash
+	[vagrant@otuslinux ~]$ date
+	Mon Apr 27 16:35:18 UTC 2020
+	[vagrant@otuslinux ~]$ ssh test_user@192.168.11.101
+	The authenticity of host '192.168.11.101 (192.168.11.101)' can't be established.
+	ECDSA key fingerprint is SHA256:s9RQXXyxoyg6pOeMpLrspOK2+GmqkMl4QNL4cfsqs98.
+	ECDSA key fingerprint is MD5:a1:f8:f2:a8:88:e4:49:2d:e0:b3:87:a9:d1:e0:c9:55.
+	Are you sure you want to continue connecting (yes/no)? y
+	Please type 'yes' or 'no': yes
+	Warning: Permanently added '192.168.11.101' (ECDSA) to the list of known hosts.
+	test_user@192.168.11.101's password: 
+	[test_user@otuslinux ~]$ exit
+	logout
+	Connection to 192.168.11.101 closed.
+	[vagrant@otuslinux ~]$ ssh test_user2@192.168.11.101
+	test_user2@192.168.11.101's password: 
+	[test_user2@otuslinux ~]$ exit
+	logout
+	Connection to 192.168.11.101 closed.
+	```
+4. Переведем дату на выходной и затем убедимся, что пользователь test_user группы admin может подключиться, а пользователь test_user2 нет. Выведем последние логи /var/log/secure:  
+	```bash
+	Sun Apr 26 00:00:00 UTC 2020
+	[vagrant@otuslinux ~]$ ssh test_user@192.168.11.101
+	test_user@192.168.11.101's password: 
+	Last login: Mon Apr 27 16:35:59 2020 from 192.168.11.101
+	[test_user@otuslinux ~]$ exit
+	logout
+	Connection to 192.168.11.101 closed.
+	[vagrant@otuslinux ~]$ ssh test_user2@192.168.11.101
+	test_user2@192.168.11.101's password: 
+	Permission denied, please try again.
+	test_user2@192.168.11.101's password: 
+
+	[vagrant@otuslinux ~]$ tail -n 10 /var/log/secure
+	tail: cannot open '/var/log/secure' for reading: Permission denied
+	[vagrant@otuslinux ~]$ sudo tail -n 10 /var/log/secure
+	Apr 26 00:00:00 localhost sudo: pam_unix(sudo:session): session opened for user root by vagrant(uid=0)
+	Apr 26 00:00:00 localhost sudo: pam_unix(sudo:session): session closed for user root
+	Apr 26 00:00:23 localhost sshd[26149]: Accepted password for test_user from 192.168.11.101 port 43908 ssh2
+	Apr 26 00:00:23 localhost sshd[26149]: pam_unix(sshd:session): session opened for user test_user by (uid=0)
+	Apr 26 00:00:29 localhost sshd[26157]: Received disconnect from 192.168.11.101 port 43908:11: disconnected by user
+	Apr 26 00:00:29 localhost sshd[26157]: Disconnected from 192.168.11.101 port 43908
+	Apr 26 00:00:29 localhost sshd[26149]: pam_unix(sshd:session): session closed for user test_user
+	Apr 26 00:00:40 localhost sshd[26182]: Failed password for test_user2 from 192.168.11.101 port 43910 ssh2
+	Apr 26 00:00:51 localhost sshd[26182]: Connection closed by 192.168.11.101 port 43910 [preauth]
+	Apr 26 00:01:24 localhost sudo: vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/tail -n 10 /var/log/secure
+	```
+5. Теперь снова подключимся пользователем test_user и убедимся, что он имеет возможность запустить докер-сервис:  
+	```bash
+	[vagrant@otuslinux ~]$ ssh test_user@192.168.11.101
+	test_user@192.168.11.101's password: 
+	Last login: Sun Apr 26 00:00:23 2020 from 192.168.11.101
+	[test_user@otuslinux ~]$ systemctl status docker
+	● docker.service - Docker Application Container Engine
+	   Loaded: loaded (/usr/lib/systemd/system/docker.service; disabled; vendor preset: disabled)
+	   Active: inactive (dead)
+	     Docs: https://docs.docker.com
+	[test_user@otuslinux ~]$ systemctl start docker
+	==== AUTHENTICATING FOR org.freedesktop.systemd1.manage-units ===
+	Authentication is required to manage system services or units.
+	Authenticating as: test_user
+	Password: 
+	==== AUTHENTICATION COMPLETE ===
+	[test_user@otuslinux ~]$ systemctl status docker
+	● docker.service - Docker Application Container Engine
+	   Loaded: loaded (/usr/lib/systemd/system/docker.service; disabled; vendor preset: disabled)
+	   Active: active (running) since Sun 2020-04-26 00:20:51 UTC; 8s ago
+	     Docs: https://docs.docker.com
+	 Main PID: 26272 (dockerd)
+	    Tasks: 8
+	   Memory: 79.4M
+	   CGroup: /system.slice/docker.service
+		   └─26272 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/con...
+
+	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.36568013...c
+	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.36570033...c
+	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.36570958...c
+	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.41367518..."
+	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.66668527..."
+	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.79450049..."
+	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.91218237...8
+	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.92161208..."
+	Apr 26 00:20:51 otuslinux dockerd[26272]: time="2020-04-26T00:20:51.05142592..."
+	Apr 26 00:20:51 otuslinux systemd[1]: Started Docker Application Container ...e.
+	Hint: Some lines were ellipsized, use -l to show in full.
+	```
 
