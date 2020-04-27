@@ -531,39 +531,78 @@
 	```bash
 	[vagrant@otuslinux ~]$ ssh test_user@192.168.11.101
 	test_user@192.168.11.101's password: 
-	Last login: Sun Apr 26 00:00:23 2020 from 192.168.11.101
+	Last login: Mon Apr 27 17:45:02 2020 from 192.168.11.101
 	[test_user@otuslinux ~]$ systemctl status docker
 	● docker.service - Docker Application Container Engine
 	   Loaded: loaded (/usr/lib/systemd/system/docker.service; disabled; vendor preset: disabled)
-	   Active: inactive (dead)
+	   Active: inactive (dead) since Mon 2020-04-27 17:46:12 UTC; 3min 49s ago
 	     Docs: https://docs.docker.com
-	[test_user@otuslinux ~]$ systemctl start docker
-	==== AUTHENTICATING FOR org.freedesktop.systemd1.manage-units ===
-	Authentication is required to manage system services or units.
-	Authenticating as: test_user
-	Password: 
-	==== AUTHENTICATION COMPLETE ===
-	[test_user@otuslinux ~]$ systemctl status docker
-	● docker.service - Docker Application Container Engine
-	   Loaded: loaded (/usr/lib/systemd/system/docker.service; disabled; vendor preset: disabled)
-	   Active: active (running) since Sun 2020-04-26 00:20:51 UTC; 8s ago
-	     Docs: https://docs.docker.com
-	 Main PID: 26272 (dockerd)
-	    Tasks: 8
-	   Memory: 79.4M
-	   CGroup: /system.slice/docker.service
-		   └─26272 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/con...
+	  Process: 6287 ExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock (code=exited, status=0/SUCCESS)
+	 Main PID: 6287 (code=exited, status=0/SUCCESS)
 
-	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.36568013...c
-	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.36570033...c
-	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.36570958...c
-	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.41367518..."
-	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.66668527..."
-	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.79450049..."
-	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.91218237...8
-	Apr 26 00:20:50 otuslinux dockerd[26272]: time="2020-04-26T00:20:50.92161208..."
-	Apr 26 00:20:51 otuslinux dockerd[26272]: time="2020-04-26T00:20:51.05142592..."
-	Apr 26 00:20:51 otuslinux systemd[1]: Started Docker Application Container ...e.
+	Apr 27 17:45:31 otuslinux dockerd[6287]: time="2020-04-27T17:45:31.538377336..."
+	Apr 27 17:45:31 otuslinux dockerd[6287]: time="2020-04-27T17:45:31.658655731..."
+	Apr 27 17:45:31 otuslinux dockerd[6287]: time="2020-04-27T17:45:31.762218040...8
+	Apr 27 17:45:31 otuslinux dockerd[6287]: time="2020-04-27T17:45:31.772697060..."
+	Apr 27 17:45:31 otuslinux systemd[1]: Started Docker Application Container ...e.
+	Apr 27 17:45:31 otuslinux dockerd[6287]: time="2020-04-27T17:45:31.882480593..."
+	Apr 27 17:46:12 otuslinux systemd[1]: Stopping Docker Application Container.....
+	Apr 27 17:46:12 otuslinux dockerd[6287]: time="2020-04-27T17:46:12.131030999..."
+	Apr 27 17:46:12 otuslinux dockerd[6287]: time="2020-04-27T17:46:12.134251744..."
+	Apr 27 17:46:12 otuslinux systemd[1]: Stopped Docker Application Container ...e.
 	Hint: Some lines were ellipsized, use -l to show in full.
-	```
+	[test_user@otuslinux ~]$ sudo systemctl start docker
 
+	We trust you have received the usual lecture from the local System
+	Administrator. It usually boils down to these three things:
+
+	    #1) Respect the privacy of others.
+	    #2) Think before you type.
+	    #3) With great power comes great responsibility.
+
+	[sudo] password for test_user: 
+	[test_user@otuslinux ~]$ systemctl status docker
+	● docker.service - Docker Application Container Engine
+	   Loaded: loaded (/usr/lib/systemd/system/docker.service; disabled; vendor preset: disabled)
+	   Active: active (running) since Mon 2020-04-27 17:50:39 UTC; 7s ago
+	     Docs: https://docs.docker.com
+	 Main PID: 6596 (dockerd)
+	    Tasks: 8
+	   Memory: 81.9M
+	   CGroup: /system.slice/docker.service
+		   └─6596 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/cont...
+
+	Apr 27 17:50:38 otuslinux dockerd[6596]: time="2020-04-27T17:50:38.949333121...c
+	Apr 27 17:50:38 otuslinux dockerd[6596]: time="2020-04-27T17:50:38.949340836...c
+	Apr 27 17:50:38 otuslinux dockerd[6596]: time="2020-04-27T17:50:38.954733245..."
+	Apr 27 17:50:38 otuslinux dockerd[6596]: time="2020-04-27T17:50:38.964646765..."
+	Apr 27 17:50:39 otuslinux dockerd[6596]: time="2020-04-27T17:50:39.108820211..."
+	Apr 27 17:50:39 otuslinux dockerd[6596]: time="2020-04-27T17:50:39.141151625..."
+	Apr 27 17:50:39 otuslinux dockerd[6596]: time="2020-04-27T17:50:39.174592305...8
+	Apr 27 17:50:39 otuslinux dockerd[6596]: time="2020-04-27T17:50:39.180436355..."
+	Apr 27 17:50:39 otuslinux dockerd[6596]: time="2020-04-27T17:50:39.221303186..."
+	Apr 27 17:50:39 otuslinux systemd[1]: Started Docker Application Container ...e.
+	Hint: Some lines were ellipsized, use -l to show in full.
+	[test_user@otuslinux ~]$ exit
+	logout
+	Connection to 192.168.11.101 closed.
+	```
+6. Теперь снова подключимся пользователем test_user2 и убедимся, что он не имеет права управлять докер-сервисом:  
+	```bash
+	[vagrant@otuslinux ~]$ ssh test_user2@192.168.11.101
+	test_user2@192.168.11.101's password: 
+	Last login: Mon Apr 27 17:45:48 2020 from 192.168.11.101
+	[test_user2@otuslinux ~]$  systemctl status docker
+	● docker.service - Docker Application Container Engine
+	   Loaded: loaded (/usr/lib/systemd/system/docker.service; disabled; vendor preset: disabled)
+	   Active: active (running) since Mon 2020-04-27 17:50:39 UTC; 2min 25s ago
+	     Docs: https://docs.docker.com
+	 Main PID: 6596 (dockerd)
+	    Tasks: 8
+	   Memory: 79.0M
+	   CGroup: /system.slice/docker.service
+		   └─6596 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/cont...
+	[test_user2@otuslinux ~]$ sudo  systemctl stop docker
+	[sudo] password for test_user2: 
+	test_user2 is not in the sudoers file.  This incident will be reported.
+	```
